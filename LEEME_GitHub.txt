@@ -1,0 +1,68 @@
+PAQUETE GITHUB · RUTAS MEMO
+Taller de Pensamiento Variacional I · Segundo Parcial
+
+VERSIÓN ESTABLE
+v1.0d FINAL
+
+ARQUITECTURA
+- H1 · Derivación por definición
+- H2 · Reglas de derivación
+- H3 · Derivadas trigonométricas
+- H4 · Rolle y teorema del valor medio
+- Módulos independientes
+- Adaptación A/B/C
+- Reporte parcial por módulo acreditado
+- Reporte final de trayectoria
+- Reconocimiento MEMO
+- Reto MEMO opcional
+- Persistencia local
+- Adaptación móvil
+
+CORRECCIONES CONSOLIDADAS EN v1.0d
+- H3 homologado visualmente con un solo botón de acceso:
+  "Revisar microlección e iniciar H3".
+- Normalización de signos algebraicos.
+- Eliminación de reactivos exactamente repetidos dentro de la misma trayectoria.
+- Persistencia de firmas visibles de ejercicios ya mostrados.
+- Migración ligera de sesiones activas previas.
+
+ARCHIVOS NECESARIOS EN LA RAÍZ DEL REPOSITORIO
+1. index.html
+2. MEMO_insignia_central.png
+
+ARCHIVO INFORMATIVO
+3. LEEME_GitHub.txt
+   No es necesario para que funcione el simulador.
+
+PUBLICACIÓN EN GITHUB PAGES
+1. Sube index.html y MEMO_insignia_central.png a la raíz del repositorio.
+2. Puedes subir también LEEME_GitHub.txt como referencia.
+3. En GitHub abre Settings > Pages.
+4. Selecciona Deploy from a branch.
+5. Selecciona la rama main y la carpeta / (root).
+6. Guarda la configuración.
+7. Espera la publicación y abre la URL de GitHub Pages.
+
+DEPENDENCIAS
+- El simulador no requiere archivos JavaScript locales externos.
+- No requiere hojas CSS externas locales.
+- La generación de QR está integrada en el propio HTML.
+- La única imagen local externa requerida es MEMO_insignia_central.png.
+- El enlace "Cuéntanos tu experiencia" abre Google Forms y requiere internet.
+
+PRUEBA RÁPIDA DESPUÉS DE PUBLICAR
+- Registro y diagnóstico.
+- Acceso independiente a H1-H4.
+- H3 debe mostrar un único botón de inicio desde microlección.
+- Revisar varios ejercicios de H4 y comprobar signos como x+3 o x−4, sin dobles signos.
+- Confirmar que no se repiten exactamente reactivos ya resueltos.
+- Reanudar una práctica después de recargar.
+- Abrir reporte parcial.
+- Abrir reporte final y Reconocimiento MEMO.
+- Probar en móvil.
+
+CRÉDITOS
+EduTech Studio MEMO
+Sistemas inteligentes y adaptativos de apoyo al aprendizaje
+Diseño pedagógico y adaptación digital: José Antonio León Juárez
+En homenaje a quienes siempre desearon seguir aprendiendo...
