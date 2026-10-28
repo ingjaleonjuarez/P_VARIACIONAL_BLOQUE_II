@@ -12125,5 +12125,384 @@ document.documentElement.dataset.memoPvarQaSignosUnicos=VERSION;
 })(typeof window!=='undefined'?window:globalThis);
 </script>
 
+
+<style id="memoPvarSyncFinal01Css">
+.memo-sync-estado{
+  margin:10px 0 0;
+  padding:7px 10px;
+  border:1px solid #dbe4e9;
+  border-radius:8px;
+  background:#f4f7fa;
+  color:#536670;
+  font-size:11.5px;
+  line-height:1.35;
+}
+.memo-sync-estado strong{color:#0F2638}
+</style>
+
+<script id="memoPvarSyncFinal01">
+(function(root){
+'use strict';
+
+/* ============================================================
+   MI-SEGUIMIENTO-PVAR-05 · Integración GitHub final
+   Taller de Pensamiento Variacional I · Segundo Parcial
+   GitHub/local -> Apps Script -> Google Sheets
+   ============================================================ */
+
+const VERSION='MEMO-PVAR1-P2-SYNC-FINAL-01';
+const ENDPOINT='https://script.google.com/macros/s/AKfycbx7B_1R-wuRJ__MZFG6U6f-0QdrjpIH62VbNr_1vawcaowAosxaY9yE9Hq9lp7-IcK_Vw/exec';
+const ENABLED=true;
+const ROUTE_ID_SYNC='PVAR1-P2';
+const ROUTE_VERSION_SYNC='v1.0d';
+const GROUPS=new Set(['501','502','503','504','505']);
+
+const QUEUE_KEY='memoSyncQueue_PVAR1P2_final01';
+const SESSION_KEY='memoSyncSession_PVAR1P2_final01';
+const CIERRE_KEY_PREFIX='memoSyncCierre_PVAR1P2_';
+const RETO_KEY_PREFIX='memoSyncReto_PVAR1P2_';
+
+function uuid(){
+  if(root.crypto && typeof root.crypto.randomUUID==='function') return root.crypto.randomUUID();
+  return 'evt-'+Date.now()+'-'+Math.random().toString(36).slice(2);
+}
+function studentId(){
+  return String(alumno?.studentId||'').trim();
+}
+function validStudent(){
+  const sid=studentId();
+  return /^\d{5}$/.test(sid) && GROUPS.has(sid.slice(0,3));
+}
+function sessionId(){
+  let s=sessionStorage.getItem(SESSION_KEY);
+  if(!s){
+    s=uuid();
+    sessionStorage.setItem(SESSION_KEY,s);
+  }
+  return s;
+}
+function resumen(){
+  try{
+    if(typeof root.obtenerResumenMEV_P2==='function'){
+      const r=root.obtenerResumenMEV_P2();
+      if(r) return {H1:r.H1,H2:r.H2,H3:r.H3,H4:r.H4};
+    }
+  }catch(_){}
+
+  const m=alumno?.modulos||{};
+  const get=k=>{
+    const x=m[k]?.resultado||{};
+    return {
+      correctos:Number(x.aciertos||0),
+      total:Number(x.total||0)
+    };
+  };
+  return {H1:get('h1'),H2:get('h2'),H3:get('h3'),H4:get('h4')};
+}
+function getQueue(){
+  try{return JSON.parse(localStorage.getItem(QUEUE_KEY)||'[]');}
+  catch(_){return [];}
+}
+function saveQueue(q){
+  localStorage.setItem(QUEUE_KEY,JSON.stringify(q.slice(-180)));
+}
+function statusText(){
+  if(!ENABLED) return 'Seguimiento docente: desactivado.';
+  const n=getQueue().length;
+  return n
+    ? `Seguimiento docente: ${n} envío(s) pendiente(s) de sincronizar.`
+    : 'Seguimiento docente: sincronización al día.';
+}
+function renderStatus(){
+  let el=document.getElementById('memoSyncEstadoPVAR');
+  if(!el){
+    const host=document.getElementById('resumenAlumno')||document.getElementById('estadoRutaDashboard');
+    if(!host)return;
+    el=document.createElement('div');
+    el.id='memoSyncEstadoPVAR';
+    el.className='memo-sync-estado';
+    host.insertAdjacentElement('afterend',el);
+  }
+  el.innerHTML='<strong>MEMO:</strong> '+statusText();
+}
+function makeEvent(tipo_evento,extra={}){
+  return {
+    event_id:uuid(),
+    student_id:studentId(),
+    route_id:ROUTE_ID_SYNC,
+    route_version:ROUTE_VERSION_SYNC,
+    tipo_evento,
+    habilidad:extra.habilidad||'',
+    seccion:extra.seccion||'',
+    acreditado:extra.acreditado===undefined?null:extra.acreditado,
+    reto_generado:extra.reto_generado===true,
+    sesion_id:sessionId(),
+    resultados:resumen()
+  };
+}
+async function sendOne(evt){
+  const response=await fetch(ENDPOINT,{
+    method:'POST',
+    headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body:JSON.stringify(evt),
+    redirect:'follow'
+  });
+  const data=await response.json();
+  if(!data || data.ok!==true) throw new Error(data?.error||'No se confirmó el envío.');
+  return data;
+}
+async function flush(){
+  if(!ENABLED || !validStudent() || !/^https?:\/\//.test(ENDPOINT)){
+    renderStatus();
+    return;
+  }
+  const q=getQueue();
+  if(!q.length){renderStatus();return;}
+
+  const remaining=[];
+  for(let i=0;i<q.length;i++){
+    try{await sendOne(q[i]);}
+    catch(_){
+      remaining.push(...q.slice(i));
+      break;
+    }
+  }
+  saveQueue(remaining);
+  renderStatus();
+}
+function checkpoint(tipo,extra={}){
+  if(!validStudent())return;
+  const q=getQueue();
+  q.push(makeEvent(tipo,extra));
+  saveQueue(q);
+  renderStatus();
+  if(ENABLED)flush();
+}
+function wrapAfter(name,after){
+  const prev=root[name];
+  if(typeof prev!=='function')return false;
+  root[name]=function(){
+    const args=[...arguments];
+    const ret=prev.apply(this,args);
+    try{after(args,ret);}catch(e){console.warn('MEMO seguimiento PVAR:',name,e);}
+    return ret;
+  };
+  return true;
+}
+
+/* ------------------------------------------------------------
+   Registro: solo población PVAR I autorizada
+   ------------------------------------------------------------ */
+const registrarBase=root.registrarAlumno;
+if(typeof registrarBase==='function'){
+  root.registrarAlumno=function(){
+    const sid=String(document.getElementById('studentId')?.value||'').replace(/\D/g,'');
+    if(!/^\d{5}$/.test(sid)){
+      alert('Captura un ID STUDENT válido de 5 dígitos.');
+      return;
+    }
+    if(!GROUPS.has(sid.slice(0,3))){
+      alert('Esta Ruta de Taller de Pensamiento Variacional I está autorizada únicamente para los grupos 501, 502, 503, 504 y 505.');
+      return;
+    }
+
+    const anterior=alumno?.studentId||'';
+    const ret=registrarBase.apply(this,arguments);
+
+    if(alumno?.studentId && root.alumno.studentId!==anterior){
+      checkpoint('INICIO_RUTA',{seccion:'Registro e inicio'});
+    }
+    return ret;
+  };
+}
+
+/* Diagnóstico selectivo */
+wrapAfter('finalizar',()=>{
+  checkpoint('FIN_DIAGNOSTICO',{seccion:'Diagnóstico selectivo H1-H4'});
+});
+
+/* Fin de bloque. El resumen se toma después del cierre para conservar
+   la evidencia acumulada más reciente del módulo. */
+[
+ ['H1','cerrarBloqueH1','practicaH1'],
+ ['H2','cerrarBloqueH2','practicaH2'],
+ ['H3','cerrarBloqueH3','practicaH3'],
+ ['H4','cerrarBloqueH4','practicaH4']
+].forEach(([h,fn,pkey])=>{
+  const prev=root[fn];
+  if(typeof prev!=='function')return;
+
+  root[fn]=function(){
+    const bloque=Number(root.alumno?.[pkey]?.bloqueNumero||0);
+    const ret=prev.apply(this,arguments);
+    checkpoint('FIN_BLOQUE',{
+      habilidad:h,
+      seccion:`${h} · Bloque ${bloque||'—'}`
+    });
+    return ret;
+  };
+});
+
+/* Cierre/acreditación de módulos independientes */
+[
+ ['H1','finalizarPracticaH1'],
+ ['H2','finalizarPracticaH2'],
+ ['H3','finalizarPracticaH3'],
+ ['H4','finalizarPracticaH4']
+].forEach(([h,fn])=>{
+  const prev=root[fn];
+  if(typeof prev!=='function')return;
+
+  root[fn]=function(consolidado){
+    const ret=prev.apply(this,arguments);
+
+    checkpoint(
+      consolidado===true?'ACREDITA_H':'CIERRE_H',
+      {
+        habilidad:h,
+        seccion:`${h} · cierre de módulo`,
+        acreditado:consolidado===true
+      }
+    );
+
+    if(consolidado===true && alumno?.rutaCompletada===true){
+      const key=CIERRE_KEY_PREFIX+studentId();
+      if(localStorage.getItem(key)!=='1'){
+        localStorage.setItem(key,'1');
+        checkpoint('CIERRE_RUTA',{seccion:'H1-H4 acreditadas'});
+      }
+    }
+    return ret;
+  };
+});
+
+/* Reto MEMO: registrar solo la primera generación/apertura */
+const retoBase=root.abrirRetoLobo;
+if(typeof retoBase==='function'){
+  root.abrirRetoLobo=function(){
+    const sid=studentId();
+    const key=RETO_KEY_PREFIX+sid;
+    const yaRegistrado=localStorage.getItem(key)==='1';
+    const ret=retoBase.apply(this,arguments);
+
+    if(alumno?.rutaCompletada===true && !yaRegistrado){
+      localStorage.setItem(key,'1');
+      checkpoint('RETO_GENERADO',{
+        seccion:'Reto MEMO final',
+        reto_generado:true
+      });
+    }
+    return ret;
+  };
+}
+
+/* Dashboard: estado de la cola y reintento */
+if(typeof root.actualizarDashboard==='function'){
+  const prev=root.actualizarDashboard;
+  root.actualizarDashboard=function(){
+    const ret=prev.apply(this,arguments);
+    renderStatus();
+    if(ENABLED)flush();
+    return ret;
+  };
+}
+
+root.addEventListener('online',()=>flush());
+root.addEventListener('load',()=>{
+  setTimeout(()=>{
+    renderStatus();
+    if(ENABLED)flush();
+  },0);
+});
+
+root.MEMO_PVAR_SYNC_FINAL_01={
+  version:VERSION,
+  endpoint:ENDPOINT,
+  routeId:ROUTE_ID_SYNC,
+  routeVersion:ROUTE_VERSION_SYNC,
+  groups:[...GROUPS],
+  checkpoint,
+  flush,
+  resumen,
+  getQueue,
+  validStudent
+};
+
+document.documentElement.dataset.memoPvarSync=VERSION;
+
+})(typeof window!=='undefined'?window:globalThis);
+</script>
+
+
+<script id="memoPvarReinicio01a">
+(function(root){
+'use strict';
+
+/* ============================================================
+   MI-SEGUIMIENTO-PVAR-02a · Corrección de reinicio
+   - Evita que pagehide/visibilitychange restaure la sesión borrada.
+   - Limpia claves PVAR heredadas y actuales.
+   - Limpia la cola LOCAL pendiente del seguimiento para que una nueva
+     sesión no arrastre eventos no enviados de la sesión reiniciada.
+   - No toca Google Sheets ni el Apps Script.
+   ============================================================ */
+
+const VERSION='MEMO-PVAR-REINICIO-FINAL-01';
+const STORAGE_KEYS=[
+  'rutasMemoPVARI_P2_Alumno_v1_0a',
+  'rutasMemoPVARI_P2_Alumno_v1'
+];
+const SYNC_QUEUE='memoSyncQueue_PVAR1P2_final01';
+const SYNC_SESSION='memoSyncSession_PVAR1P2_final01';
+const LEGACY_SYNC_QUEUE='memoSyncQueue_PVAR1P2_pilot01';
+const LEGACY_SYNC_SESSION='memoSyncSession_PVAR1P2_pilot01';
+const CIERRE_PREFIX='memoSyncCierre_PVAR1P2_';
+const RETO_PREFIX='memoSyncReto_PVAR1P2_';
+
+root.reiniciarRuta=function(){
+  if(!confirm('¿Seguro que deseas reiniciar la Ruta MEMO? Se eliminará el progreso guardado de este simulador.'))return;
+
+  const sid=String(alumno?.studentId||'').trim();
+
+  /* Es la protección que faltaba en la sobreescritura final v1.0d. */
+  try{
+    if(typeof reinicioRutaEnCurso!=='undefined'){
+      reinicioRutaEnCurso=true;
+    }
+  }catch(_){}
+
+  try{
+    STORAGE_KEYS.forEach(k=>localStorage.removeItem(k));
+    localStorage.removeItem(SYNC_QUEUE);
+    localStorage.removeItem(LEGACY_SYNC_QUEUE);
+    if(sid){
+      localStorage.removeItem(CIERRE_PREFIX+sid);
+      localStorage.removeItem(RETO_PREFIX+sid);
+    }
+    sessionStorage.removeItem(SYNC_SESSION);
+    sessionStorage.removeItem(LEGACY_SYNC_SESSION);
+  }catch(_){}
+
+  try{
+    alumno={};
+    if(typeof diagnostico!=='undefined')diagnostico=[];
+    if(typeof actual!=='undefined')actual=0;
+    if(typeof aciertos!=='undefined')aciertos=0;
+    if(typeof respuestasDiagnostico!=='undefined')respuestasDiagnostico=[];
+    if(typeof faseDiagnostico!=='undefined')faseDiagnostico='base';
+    if(typeof confirmacionesDiagnostico!=='undefined')confirmacionesDiagnostico=[];
+    if(typeof actualConfirmacion!=='undefined')actualConfirmacion=0;
+    if(typeof respuestasConfirmacion!=='undefined')respuestasConfirmacion=[];
+  }catch(_){}
+
+  location.reload();
+};
+
+root.MEMO_PVAR_REINICIO_FINAL_01={version:VERSION};
+document.documentElement.dataset.memoPvarReinicio=VERSION;
+
+})(typeof window!=='undefined'?window:globalThis);
+</script>
+
 </body>
 </html>
